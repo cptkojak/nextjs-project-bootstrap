@@ -1,0 +1,151 @@
+// This is your Prisma schema file for Easter Valley MMORPG
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User account management
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  username      String    @unique
+  passwordHash  String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Game-specific user data
+  character     Character?
+  inventory     Inventory?
+  farm          Farm?
+  marketListings MarketListing[]
+  sentMessages   ChatMessage[]    @relation("SentMessages")
+  receivedMessages ChatMessage[]  @relation("ReceivedMessages")
+}
+
+// Player character
+model Character {
+  id          String    @id @default(cuid())
+  userId      String    @unique
+  user        User      @relation(fields: [userId], references: [id])
+  name        String
+  level       Int       @default(1)
+  experience  Int       @default(0)
+  energy      Int       @default(100)
+  maxEnergy   Int       @default(100)
+  coins       Int       @default(100)
+  lastLogin   DateTime  @default(now())
+  
+  // Character stats
+  farmingLevel    Int   @default(1)
+  miningLevel     Int   @default(1)
+  fishingLevel    Int   @default(1)
+  combatLevel     Int   @default(1)
+}
+
+// Player's inventory
+model Inventory {
+  id        String    @id @default(cuid())
+  userId    String    @unique
+  user      User      @relation(fields: [userId], references: [id])
+  items     InventoryItem[]
+  maxSlots  Int       @default(20)
+}
+
+// Individual inventory items
+model InventoryItem {
+  id          String    @id @default(cuid())
+  inventoryId String
+  inventory   Inventory @relation(fields: [inventoryId], references: [id])
+  itemId      String
+  item        Item      @relation(fields: [itemId], references: [id])
+  quantity    Int
+  position    Int       // Slot position in inventory
+}
+
+// Game items catalog
+model Item {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  description String
+  type        ItemType
+  rarity      Rarity
+  basePrice   Int
+  stackable   Boolean   @default(true)
+  
+  // Relations
+  inventoryItems InventoryItem[]
+  marketListings MarketListing[]
+}
+
+// Player's farm
+model Farm {
+  id        String    @id @default(cuid())
+  userId    String    @unique
+  user      User      @relation(fields: [userId], references: [id])
+  name      String
+  plots     FarmPlot[]
+  level     Int       @default(1)
+  maxPlots  Int       @default(9)
+}
+
+// Individual farm plots
+model FarmPlot {
+  id          String    @id @default(cuid())
+  farmId      String
+  farm        Farm      @relation(fields: [farmId], references: [id])
+  position    Int
+  plantedItem String?   // ID of planted crop
+  plantedAt   DateTime?
+  waterLevel  Int       @default(0)
+  isWatered   Boolean   @default(false)
+}
+
+// Market listings
+model MarketListing {
+  id        String    @id @default(cuid())
+  sellerId  String
+  seller    User      @relation(fields: [sellerId], references: [id])
+  itemId    String
+  item      Item      @relation(fields: [itemId], references: [id])
+  quantity  Int
+  price     Int
+  createdAt DateTime  @default(now())
+  active    Boolean   @default(true)
+}
+
+// Chat messages
+model ChatMessage {
+  id          String    @id @default(cuid())
+  senderId    String
+  sender      User      @relation("SentMessages", fields: [senderId], references: [id])
+  receiverId  String
+  receiver    User      @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  content     String
+  createdAt   DateTime  @default(now())
+  isRead      Boolean   @default(false)
+}
+
+// Enums
+enum ItemType {
+  SEED
+  CROP
+  TOOL
+  WEAPON
+  ARMOR
+  POTION
+  MATERIAL
+  FURNITURE
+}
+
+enum Rarity {
+  COMMON
+  UNCOMMON
+  RARE
+  EPIC
+  LEGENDARY
+}
